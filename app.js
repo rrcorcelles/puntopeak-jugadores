@@ -62,6 +62,10 @@
       push_title: "Activa los avisos", push_text: "Te recordaremos el cuestionario a las {hour} los días de entrenamiento.",
       push_btn: "Activar avisos", push_blocked: "Avisos bloqueados", push_blocked_text: "Actívalos en los ajustes del móvil para recibir los recordatorios.",
       demo: "Modo demostración: datos de ejemplo. Nada de lo que respondas se guarda.",
+      welcome: "Bienvenido a PuntoPeak", welcome_hint: "Para empezar, identifícate con el código personal que te ha dado el cuerpo técnico. Solo hay que hacerlo una vez.",
+      scan: "Escanear mi QR", paste: "O pega aquí tu enlace", paste_ph: "https://…", enter: "Entrar",
+      scan_hint: "Apunta la cámara a tu código QR.", cancel: "Cancelar", camera_error: "No se ha podido abrir la cámara. Pega tu enlace.",
+      bad_code: "Ese enlace no es válido. Revísalo o pide uno nuevo.", other_code: "Usar otro código",
       zones: {
         abdomen: "Abdomen", aductor_izq: "Aductor izq.", aductor_der: "Aductor der.",
         cuadriceps_izq: "Cuádriceps izq.", cuadriceps_der: "Cuádriceps der.", rodilla_izq: "Rodilla izq.", rodilla_der: "Rodilla der.",
@@ -105,6 +109,10 @@
       push_title: "Turn on reminders", push_text: "We'll remind you of the questionnaire at {hour} on training days.",
       push_btn: "Turn on reminders", push_blocked: "Reminders blocked", push_blocked_text: "Allow them in your phone settings to get the reminders.",
       demo: "Demo mode: sample data. Nothing you answer is saved.",
+      welcome: "Welcome to PuntoPeak", welcome_hint: "To get started, sign in with the personal code the staff gave you. You only need to do this once.",
+      scan: "Scan my QR", paste: "Or paste your link here", paste_ph: "https://…", enter: "Sign in",
+      scan_hint: "Point the camera at your QR code.", cancel: "Cancel", camera_error: "Could not open the camera. Paste your link instead.",
+      bad_code: "That link is not valid. Check it or ask for a new one.", other_code: "Use another code",
       zones: {
         abdomen: "Abdomen", aductor_izq: "L adductor", aductor_der: "R adductor",
         cuadriceps_izq: "L quadriceps", cuadriceps_der: "R quadriceps", rodilla_izq: "L knee", rodilla_der: "R knee",
@@ -407,7 +415,69 @@
 
   function invalidLink() {
     current = invalidLink;
-    el(`<div class="done-msg"><div class="big">${T("invalid")}</div><p class="sub">${T("invalid_hint")}</p></div>`);
+    el(`<div class="done-msg"><div class="big">${T("invalid")}</div><p class="sub">${T("invalid_hint")}</p></div>
+        <button class="btn secondary" id="other">${T("other_code")}</button>`);
+    document.getElementById("other").onclick = () => { token = null; store.set("pp_token", ""); welcome(); };
+  }
+
+  // ---------- Bienvenida: identificarse una vez (QR o enlace) ----------
+  function extractToken(text) {
+    const s = String(text || "").trim();
+    try { const t = new URL(s).searchParams.get("t"); if (t) return t; } catch (e) { /* no es una URL */ }
+    return /^[A-Za-z0-9_-]{20,}$/.test(s) ? s : null;
+  }
+
+  async function useToken(t) {
+    token = t;
+    store.set("pp_token", t);
+    try { await rpc("pp_player", {}); history.replaceState(null, "", location.pathname); home(); }
+    catch (e) { token = null; store.set("pp_token", ""); welcome(T(e.status ? "bad_code" : "offline_hint")); }
+  }
+
+  function welcome(error) {
+    current = () => welcome(error);
+    const canScan = "BarcodeDetector" in window && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+    el(`
+      <h1>${T("welcome")}</h1>
+      <p class="sub">${T("welcome_hint")}</p>
+      ${error ? `<p class="error">${esc(error)}</p>` : ""}
+      ${canScan ? `<button class="btn accent" id="scan">${T("scan")}</button>` : ""}
+      <h2 style="text-transform:none;letter-spacing:0;font-size:1.1rem">${T("paste")}</h2>
+      <input id="link" class="input" type="url" inputmode="url" autocomplete="off" placeholder="${T("paste_ph")}">
+      <button class="btn" id="enter">${T("enter")}</button>
+    `);
+    document.getElementById("enter").onclick = () => {
+      const t = extractToken(document.getElementById("link").value);
+      t ? useToken(t) : welcome(T("bad_code"));
+    };
+    const scanBtn = document.getElementById("scan");
+    if (scanBtn) scanBtn.onclick = scanQr;
+  }
+
+  async function scanQr() {
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+    } catch (e) { return welcome(T("camera_error")); }
+    el(`<p class="sub">${T("scan_hint")}</p><video id="cam" class="cam" playsinline muted></video>
+        <button class="btn secondary" id="cancel">${T("cancel")}</button>`);
+    const video = document.getElementById("cam");
+    video.srcObject = stream;
+    await video.play().catch(() => {});
+    const detector = new BarcodeDetector({ formats: ["qr_code"] });
+    let active = true;
+    const stop = () => { active = false; stream.getTracks().forEach((tr) => tr.stop()); };
+    document.getElementById("cancel").onclick = () => { stop(); welcome(); };
+    const loop = async () => {
+      if (!active) return;
+      try {
+        const codes = await detector.detect(video);
+        const t = codes.map((c) => extractToken(c.rawValue)).find(Boolean);
+        if (t) { stop(); return useToken(t); }
+      } catch (e) { /* fotograma no disponible todavía */ }
+      setTimeout(loop, 300);
+    };
+    loop();
   }
 
   function offline() {
@@ -518,7 +588,7 @@
   document.documentElement.lang = lang;
   renderLangSwitch();
   if ("serviceWorker" in navigator && !DEMO) navigator.serviceWorker.register("sw.js").catch(() => {});
-  if (!token && !DEMO) return invalidLink();
+  if (!token && !DEMO) return welcome();
   const route = location.hash.replace("#", "");
   if (route === "bienestar") wellness();
   else if (route === "rpe") rpeScreen();
