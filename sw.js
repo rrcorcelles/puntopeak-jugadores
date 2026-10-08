@@ -1,5 +1,5 @@
 /* Service worker de PuntoPeak: recibe las notificaciones y guarda la app para abrir sin conexión. */
-const CACHE = "puntopeak-v3";
+const CACHE = "puntopeak-v4";
 const SHELL = ["./", "index.html", "styles.css", "app.js", "config.js", "manifest.webmanifest",
                "icons/escudo.png", "icons/icon-192.png"];
 
