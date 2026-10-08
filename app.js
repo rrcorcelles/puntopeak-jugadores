@@ -58,6 +58,7 @@
       ios_step2: "Elige {add} <b class='inline'>Añadir a pantalla de inicio</b>.",
       ios_step3: "Abre PuntoPeak desde el icono nuevo.",
       install_why: "Tendrás su icono y te avisará de los cuestionarios.", install: "Instalar", later: "Ahora no",
+      apk: "Descargar la app para Android",
       install_menu: "Toca el menú <b class='inline'>⋮</b> del navegador y elige <b class='inline'>Instalar aplicación</b> o <b class='inline'>Añadir a pantalla de inicio</b>.",
       push_title: "Activa los avisos", push_text: "Te recordaremos el cuestionario a las {hour} los días de entrenamiento.",
       push_btn: "Activar avisos", push_blocked: "Avisos bloqueados", push_blocked_text: "Actívalos en los ajustes del móvil para recibir los recordatorios.",
@@ -105,6 +106,7 @@
       ios_step2: "Choose {add} <b class='inline'>Add to Home Screen</b>.",
       ios_step3: "Open PuntoPeak from the new icon.",
       install_why: "You'll get its icon and reminders for the questionnaires.", install: "Install", later: "Not now",
+      apk: "Download the Android app",
       install_menu: "Tap the browser menu <b class='inline'>⋮</b> and choose <b class='inline'>Install app</b> or <b class='inline'>Add to Home screen</b>.",
       push_title: "Turn on reminders", push_text: "We'll remind you of the questionnaire at {hour} on training days.",
       push_btn: "Turn on reminders", push_blocked: "Reminders blocked", push_blocked_text: "Allow them in your phone settings to get the reminders.",
@@ -521,12 +523,13 @@
           <li>${T("ios_step3")}</li>
         </ol></div>`;
     }
+    const apk = CFG.apkUrl ? `<a class="btn secondary" href="${esc(CFG.apkUrl)}">${T("apk")}</a>` : "";
     if (installPrompt) {
       return `<div class="banner install"><b>${T("install_title")}</b>${T("install_why")}
-        <button class="btn accent" id="install-btn">${T("install")}</button>
+        <button class="btn accent" id="install-btn">${T("install")}</button>${apk}
         <button class="btn secondary" id="install-later">${T("later")}</button></div>`;
     }
-    return `<div class="banner install"><b>${T("install_title")}</b>${T("install_menu")}</div>`;
+    return `<div class="banner install"><b>${T("install_title")}</b>${T("install_menu")}${apk}</div>`;
   }
 
   function bindInstall() {
