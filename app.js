@@ -42,6 +42,10 @@
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 
+  // Fecha local del móvil (YYYY-MM-DD). La ISO en UTC daría, de 0:00 a 2:00 en España, el día anterior.
+  const localKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const parseDay = (s) => new Date(`${s}T12:00:00`);
+
   function wellnessColor(v) {
     if (v == null) return null;
     if (v >= 4) return "var(--green)";
@@ -124,7 +128,8 @@
     el(`
       <h1>Hola, ${esc(firstName(info.nombre))}</h1>
       <p class="sub">${new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}</p>
-      ${notificationsBanner()}
+      <div id="install-slot">${installBanner()}</div>
+      ${installBanner() ? "" : notificationsBanner()}
       <button class="card task ${pendingW ? "pending" : "done"}" id="go-w" ${pendingW ? "" : "disabled"}>
         <div><div class="title">¿Cómo llegas hoy?</div><div class="hint">Bienestar · 20 segundos</div></div>
         <span class="badge ${pendingW ? "pending" : "done"}">${pendingW ? "Pendiente" : "Hecho"}</span>
@@ -139,6 +144,7 @@
     document.getElementById("go-r").onclick = () => pendingR && rpeScreen();
     const nb = document.getElementById("enable-push");
     if (nb) nb.onclick = enablePush;
+    bindInstall();
   }
 
   function myData(summary) {
@@ -146,7 +152,7 @@
     const byDate = Object.fromEntries((summary.bienestar || []).map((d) => [d.fecha, d.media]));
     const days = [...Array(14)].map((_, i) => {
       const d = new Date(); d.setDate(d.getDate() - 13 + i);
-      const key = d.toISOString().slice(0, 10);
+      const key = localKey(d);
       return { key, label: d.toLocaleDateString("es-ES", { weekday: "narrow" }), v: byDate[key] };
     });
     const bars = days.map((d) => d.v == null
@@ -160,7 +166,7 @@
         <div class="tile"><div class="v">${c.partidos ?? "–"}</div><div class="u">partidos</div><div class="l">Equivale a</div></div>
         <div class="tile"><div class="v">${c.vmax ?? "–"}</div><div class="u">km/h</div><div class="l">Tu velocidad máx.</div></div>
       </div>
-      <p class="note">Datos del GPS hasta el ${new Date(c.fecha).toLocaleDateString("es-ES", { day: "numeric", month: "long" })}.</p>` : "";
+      <p class="note">Datos del GPS hasta el ${parseDay(c.fecha).toLocaleDateString("es-ES", { day: "numeric", month: "long" })}.</p>` : "";
     return `
       <h2>Mis datos</h2>
       <div class="card">
@@ -285,14 +291,73 @@
     app.appendChild(p);
   }
 
+  // ---------- Instalación ----------
+  const ua = navigator.userAgent;
+  const isAndroid = /android/i.test(ua);
+  const iosOtherBrowser = isIOS && /CriOS|FxiOS|EdgiOS|FBAN|FBAV|Instagram|WhatsApp|Line\//i.test(ua);
+  let installPrompt = null;      // evento del navegador para instalar con un toque (Android/Chrome)
+  let installDismissed = false;
+
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; refreshInstall(); });
+  window.addEventListener("appinstalled", () => { installPrompt = null; installDismissed = true; refreshInstall(); });
+
+  const ICON_SHARE = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>`;
+  const ICON_ADD = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#102048" stroke-width="2" stroke-linecap="round" style="vertical-align:-3px"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg>`;
+
+  function installBanner() {
+    if (standalone || installDismissed || !(isIOS || isAndroid)) return "";
+    if (iosOtherBrowser) {
+      return `<div class="banner install"><b>Instala PuntoPeak en tu iPhone</b>
+        En iPhone solo se puede instalar desde <b class="inline">Safari</b>. Copia el enlace, ábrelo en Safari y sigue los pasos.
+        <button class="btn" id="copy-link">Copiar enlace</button></div>`;
+    }
+    if (isIOS) {
+      return `<div class="banner install"><b>Instala PuntoPeak en tu iPhone</b>
+        <ol class="steps">
+          <li>Pulsa ${ICON_SHARE} <b class="inline">Compartir</b> en la barra de Safari.</li>
+          <li>Elige ${ICON_ADD} <b class="inline">Añadir a pantalla de inicio</b>.</li>
+          <li>Abre PuntoPeak desde el icono nuevo.</li>
+        </ol></div>`;
+    }
+    if (installPrompt) {
+      return `<div class="banner install"><b>Instala PuntoPeak en tu móvil</b>Tendrás su icono y te avisará de los cuestionarios.
+        <button class="btn accent" id="install-btn">Instalar</button>
+        <button class="btn secondary" id="install-later">Ahora no</button></div>`;
+    }
+    return `<div class="banner install"><b>Instala PuntoPeak en tu móvil</b>
+      Toca el menú <b class="inline">⋮</b> del navegador y elige <b class="inline">Instalar aplicación</b>
+      o <b class="inline">Añadir a pantalla de inicio</b>.</div>`;
+  }
+
+  function bindInstall() {
+    const btn = document.getElementById("install-btn");
+    if (btn) btn.onclick = async () => {
+      installPrompt.prompt();
+      const { outcome } = await installPrompt.userChoice;
+      installPrompt = null;
+      if (outcome === "accepted") installDismissed = true;
+      refreshInstall();
+    };
+    const later = document.getElementById("install-later");
+    if (later) later.onclick = () => { installDismissed = true; refreshInstall(); };
+    const copy = document.getElementById("copy-link");
+    if (copy) copy.onclick = async () => {
+      try { await navigator.clipboard.writeText(location.href); copy.textContent = "Enlace copiado"; }
+      catch (e) { copy.outerHTML = `<p class="note" style="word-break:break-all">${esc(location.href)}</p>`; }
+    };
+  }
+
+  function refreshInstall() {
+    const slot = document.getElementById("install-slot");
+    if (!slot) return;
+    slot.innerHTML = installBanner();
+    bindInstall();
+  }
+
   // ---------- Notificaciones ----------
   function notificationsBanner() {
     if (!("serviceWorker" in navigator) || !CFG.vapidPublicKey) return "";
-    if (isIOS && !standalone) {
-      return `<div class="banner"><b>Instala PuntoPeak para recibir los avisos</b>
-        En Safari, pulsa <b style="display:inline">Compartir</b> y después <b style="display:inline">Añadir a pantalla de inicio</b>.
-        Abre la app desde el icono nuevo.</div>`;
-    }
+    if (isIOS && !standalone) return "";   // en iPhone los avisos solo funcionan con la app instalada
     if (!("Notification" in window) || Notification.permission === "granted") return "";
     if (Notification.permission === "denied") {
       return `<div class="banner"><b>Avisos bloqueados</b>Actívalos en los ajustes del móvil para recibir los recordatorios.</div>`;

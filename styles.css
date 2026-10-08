@@ -94,3 +94,10 @@ h2 { font-size: 1.3rem; margin: 22px 0 10px; text-transform: uppercase; letter-s
 .done-msg { text-align: center; margin-top: 50px; }
 .done-msg .big { font-family: 'Barlow Condensed', sans-serif; font-size: 2.2rem; font-weight: 700; }
 .error { color: var(--red); }
+
+/* Instalación */
+.banner.install { border-color: var(--navy); background: #EEF2F8; }
+.banner .inline { display: inline; margin: 0; }
+.steps { margin: 6px 0 0; padding-left: 20px; }
+.steps li { margin-bottom: 6px; }
+.banner .btn { margin-top: 10px; padding: 12px; }
