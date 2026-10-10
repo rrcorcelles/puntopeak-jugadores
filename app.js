@@ -75,7 +75,7 @@
       match_by_match: "Partido a partido", matches_title: "Mis partidos", my_matches: "Mis partidos",
       vs: "vs", at: "en", home_game: "Local", away_game: "Visitante", match: "Partido",
       best_team: "Mejor del equipo", last_match: "Último partido",
-      stats_note: "Datos de la cámara Veo. La media del equipo es la de todos los que jugaron ese partido.",
+      stats_note_short: "Datos de la cámara Veo.", matches_word: "Partidos",
       result: { W: "Victoria", D: "Empate", L: "Derrota" },
       cats: { fisico: "Físico", ataque: "Ataque", pases: "Pases", defensa: "Defensa", otras: "Otras" },
       zones: {
@@ -132,7 +132,7 @@
       match_by_match: "Match by match", matches_title: "My matches", my_matches: "My matches",
       vs: "vs", at: "at", home_game: "Home", away_game: "Away", match: "Match",
       best_team: "Team best", last_match: "Last match",
-      stats_note: "Data from the Veo camera. Team average = everyone who played that match.",
+      stats_note_short: "Data from the Veo camera.", matches_word: "Matches",
       result: { W: "Win", D: "Draw", L: "Loss" },
       cats: { fisico: "Physical", ataque: "Attack", pases: "Passing", defensa: "Defending", otras: "Other" },
       zones: {
@@ -342,7 +342,7 @@
       ${lastMatchCard()}
       ${myData(summary)}
     `, "home");
-    const lm = document.getElementById("last-match");
+    const lm = document.querySelector("#last-match .mrow");
     if (lm) lm.onclick = () => matchDetail(lm.dataset.id);
     document.getElementById("go-w").onclick = () => pendingW && wellness();
     document.getElementById("go-r").onclick = () => pendingR && rpeScreen();
@@ -632,13 +632,13 @@
   const hasStats = () => !!(statsData && statsData.partidos && statsData.partidos.length);
   const RATES = { conversion: ["goles", "ocasiones"], precision_pase: ["pases_ok", "pases"] };
   const CAT_ORDER = ["fisico", "ataque", "pases", "defensa", "otras"];
-  const HIGHLIGHTS = ["goles", "participaciones_gol", "distancia", "precision_pase", "vel_max", "pases"];
+  const CHART_KEYS = ["distancia", "sprints", "pases"];
   const metricMap = () => Object.fromEntries((statsData.metricas || []).map((m) => [m.key, m]));
   const mLabel = (m) => (m && (m[lang] || m.es)) || "";
   const fmt = (v, digits) => (v == null || isNaN(v) ? "–" : (+v).toLocaleString(LOCALE(), { maximumFractionDigits: digits ?? 1 }));
   const outcome = (p) => (p.gf == null || p.gc == null ? null : p.gf > p.gc ? "W" : p.gf === p.gc ? "D" : "L");
   const unitHtml = (m) => (m.unidad === "%" ? "%" : m.unidad ? ` <small>${esc(m.unidad)}</small>` : "");
-  const digitsOf = () => 1;
+  const catOf = (m) => (CAT_ORDER.includes(m.categoria) ? m.categoria : "otras");
 
   function tabBar(active) {
     const icon = {
@@ -671,25 +671,43 @@
     return t[key];
   }
 
-  // Fila: estadística, valor del jugador y barra frente a la media del equipo (marca naranja)
-  function compareRow(m, value, team, extra, best) {
+  // Fila limpia: nombre y valor; debajo, barra fina con una marca naranja en la media del equipo
+  function statRow(m, value, team, best) {
     const scale = Math.max(value || 0, team || 0) * 1.15 || 1;
-    return `<div class="stat-row">
-      <div class="stat-head"><span class="stat-name">${esc(mLabel(m))}${best ? ` <em class="best">★ ${T("best_team")}</em>` : ""}</span>
-        <span class="stat-val">${fmt(value, digitsOf(m))}${unitHtml(m)}</span></div>
-      <div class="cmp"><div class="cmp-fill" style="width:${Math.min(100, ((value || 0) / scale) * 100)}%"></div>
-        ${team != null ? `<div class="cmp-team" style="left:${Math.min(100, (team / scale) * 100)}%"></div>` : ""}</div>
-      <div class="stat-foot"><span>${team != null ? `${T("team_avg")}: ${fmt(team, digitsOf(m))}` : ""}</span><span>${extra || ""}</span></div>
+    return `<div class="srow">
+      <div class="srow-top"><span>${esc(mLabel(m))}${best ? ' <i class="star" title="' + T("best_team") + '">★</i>' : ""}</span>
+        <b>${fmt(value)}${unitHtml(m)}</b></div>
+      <div class="sbar"><span style="width:${Math.min(100, ((value || 0) / scale) * 100)}%"></span>
+        ${team != null ? `<i style="left:${Math.min(100, (team / scale) * 100)}%" title="${T("team_avg")}: ${fmt(team)}"></i>` : ""}</div>
     </div>`;
   }
 
-  function categoryCards(rowFor) {
+  // Una categoría a la vista (Físico / Ataque / Pases / Defensa) para no amontonar números
+  let activeCat = "fisico";
+  function categoryPanel(rowFor, id) {
     const meta = metricMap();
-    return CAT_ORDER.map((cat) => {
-      const rows = (statsData.metricas || []).filter((m) => (CAT_ORDER.includes(m.categoria) ? m.categoria : "otras") === cat)
-        .map((m) => rowFor(meta[m.key])).filter(Boolean);
-      return rows.length ? `<h2>${T("cats")[cat]}</h2><div class="card stats-card">${rows.join("")}</div>` : "";
-    }).join("");
+    const byCat = {};
+    (statsData.metricas || []).forEach((m) => {
+      const row = rowFor(meta[m.key]);
+      if (row) (byCat[catOf(m)] = byCat[catOf(m)] || []).push(row);
+    });
+    const cats = CAT_ORDER.filter((c) => byCat[c]);
+    if (!cats.length) return "";
+    if (!cats.includes(activeCat)) activeCat = cats[0];
+    return `<div class="card panel" id="${id}">
+      <div class="seg">${cats.map((c) => `<button data-c="${c}" class="${c === activeCat ? "on" : ""}">${T("cats")[c]}</button>`).join("")}</div>
+      ${cats.map((c) => `<div class="cat" data-c="${c}" ${c === activeCat ? "" : "hidden"}>${byCat[c].join("")}</div>`).join("")}
+      <div class="key"><span><i class="k-you"></i>${T("you")}</span><span><i class="k-team"></i>${T("team_avg")}</span></div>
+    </div>`;
+  }
+  function bindPanel(id) {
+    const box = document.getElementById(id);
+    if (!box) return;
+    box.querySelectorAll(".seg button").forEach((b) => (b.onclick = () => {
+      activeCat = b.dataset.c;
+      box.querySelectorAll(".seg button").forEach((x) => x.classList.toggle("on", x === b));
+      box.querySelectorAll(".cat").forEach((x) => (x.hidden = x.dataset.c !== activeCat));
+    }));
   }
 
   function matchTitle(p) {
@@ -697,31 +715,23 @@
     return p.rival ? `${where} ${esc(p.rival)}` : `${T("match")} ${esc(p.jornada || "")}`;
   }
   const matchDate = (p) => (p.fecha ? parseDay(p.fecha).toLocaleDateString(LOCALE(), { day: "numeric", month: "short" }) : "");
-  const venue = (p) => (p.condicion === "visitante" ? T("away_game") : T("home_game"));
 
   function resultChip(p) {
     const o = outcome(p);
     return o ? `<span class="result ${o}" title="${T("result")[o]}">${p.gf}-${p.gc}</span>` : "";
   }
 
-  function miniStats(p) {
-    const meta = metricMap();
-    const picks = HIGHLIGHTS.filter((k) => meta[k] && p.stats && p.stats[k] != null && !(k === "goles" && !p.stats[k])).slice(0, 3);
-    return `<div class="mini">${picks.map((k) => `<span><b>${fmt(p.stats[k], digitsOf(meta[k]))}${meta[k].unidad === "%" ? "%" : ""}</b>${esc(mLabel(meta[k]))}</span>`).join("")}</div>`;
-  }
-
-  function matchCard(p, id) {
-    return `<button class="card match-card" ${id ? `id="${id}"` : ""} data-id="${p.id}">
-      <div class="match-top"><span class="jornada">J${esc(p.jornada || "")}</span>
-        <span class="match-name">${matchTitle(p)}<small>${matchDate(p)} · ${venue(p)}</small></span>${resultChip(p)}</div>
-      ${miniStats(p)}
+  // Fila de partido (lista y tarjeta de inicio)
+  const matchRow = (p) => `<button class="mrow" data-id="${p.id}">
+      <span class="mj">J${esc(p.jornada || "")}</span>
+      <span class="mname">${matchTitle(p)}<small>${matchDate(p)}</small></span>
+      ${resultChip(p)}<span class="chev">›</span>
     </button>`;
-  }
 
   function lastMatchCard() {
     if (!hasStats()) return "";
     const p = statsData.partidos[statsData.partidos.length - 1];
-    return `<h2>${T("last_match")}</h2>${matchCard(p, "last-match")}`;
+    return `<h2>${T("last_match")}</h2><div class="card list" id="last-match">${matchRow(p)}</div>`;
   }
 
   let chartKey = null;
@@ -729,65 +739,53 @@
     current = statsScreen;
     if (!hasStats()) return home();
     const partidos = statsData.partidos, meta = metricMap(), n = partidos.length;
-    const tiles = HIGHLIGHTS.filter((k) => meta[k]).slice(0, 4).map((k) => {
-      const m = meta[k], s = seasonValue(k, m.agg, partidos);
-      const showTotal = m.agg === "sum" && m.unidad !== "km";
-      const v = s ? (showTotal ? s.total : s.value) : null;
-      const sub = showTotal ? T("total") : m.agg === "max" ? T("best") : m.agg === "rate" ? T("season") : T("per_match");
-      return `<div class="tile"><div class="v">${fmt(v, m.unidad === "km" ? 1 : 0)}${m.unidad === "%" ? "%" : ""}</div>
-        <div class="u">${esc(m.unidad && m.unidad !== "%" ? m.unidad : "")}</div><div class="l">${esc(mLabel(m))}<br>${sub}</div></div>`;
-    });
-    const chartable = (statsData.metricas || []).filter((m) => m.agg !== "rate" && partidos.some((p) => p.stats && p.stats[m.key] != null));
-    if (!chartKey || !meta[chartKey]) chartKey = (chartable.find((m) => m.key === "distancia") || chartable[0] || {}).key;
+    const head = [["", n, T("matches_word")]];
+    if (meta.goles) head.push(["", seasonValue("goles", "sum", partidos)?.total ?? 0, mLabel(meta.goles)]);
+    if (meta.distancia) head.push(["km", seasonValue("distancia", "sum", partidos)?.value, `${T("per_match")}`]);
+    const chartable = CHART_KEYS.filter((k) => meta[k] && partidos.some((p) => p.stats && p.stats[k] != null));
+    if (!chartable.includes(chartKey)) chartKey = chartable[0];
     el(`
       <h1>${T("stats_title")}</h1>
-      <p class="sub">${T("season")} · ${n === 1 ? T("n_match") : T("n_matches").replace("{n}", n)}</p>
-      <div class="tiles four">${tiles.join("")}</div>
-      <h2>${T("match_by_match")}</h2>
-      <div class="card">
-        <div class="metric-chips">${chartable.slice(0, 8).map((m) => `<button data-k="${m.key}" class="${m.key === chartKey ? "on" : ""}">${esc(mLabel(m))}</button>`).join("")}</div>
+      <p class="sub">${T("season")}</p>
+      <div class="card hero">${head.map(([u, v, l]) => `<div><b>${fmt(v)}</b>${u ? `<small>${u}</small>` : ""}<span>${esc(l)}</span></div>`).join("")}</div>
+      ${chartKey ? `<div class="card">
+        <div class="seg small">${chartable.map((k) => `<button data-k="${k}" class="${k === chartKey ? "on" : ""}">${esc(mLabel(meta[k]))}</button>`).join("")}</div>
         <div id="match-chart">${matchChart(chartKey)}</div>
-      </div>
-      ${categoryCards((m) => {
+      </div>` : ""}
+      ${categoryPanel((m) => {
         const s = seasonValue(m.key, m.agg, partidos);
-        if (!s) return "";
-        const extra = m.agg === "sum" ? `${T("per_match")} · ${T("total")}: ${fmt(s.total, m.unidad === "km" ? 1 : 0)}` : m.agg === "max" ? T("best") : "";
-        return compareRow(m, s.value, teamSeason(m.key, m.agg), extra);
-      })}
-      <p class="note">${T("stats_note")}</p>
+        return s ? statRow(m, s.value, teamSeason(m.key, m.agg)) : "";
+      }, "season-panel")}
+      <p class="note">${T("stats_note_short")}</p>
     `, "stats");
     bindChart();
+    bindPanel("season-panel");
   }
 
-  // Barras por partido (valor del jugador) con una marca naranja en la media del equipo de ese partido
+  // Barras por partido con una marca naranja en la media del equipo de ese partido
   function matchChart(key) {
     const m = metricMap()[key];
     if (!m) return "";
     const ps = statsData.partidos;
     const vals = ps.map((p) => (p.stats && p.stats[key] != null ? p.stats[key] : null));
     const teams = ps.map((p) => (p.equipo && p.equipo[key] != null ? p.equipo[key] : null));
-    const max = Math.max(0, ...vals.filter((v) => v != null), ...teams.filter((v) => v != null)) * 1.12 || 1;
-    const present = vals.filter((v) => v != null);
-    const bestIdx = present.length ? vals.indexOf(Math.max(...present)) : -1;
-    const digits = m.unidad === "km" ? 1 : 0;
+    const max = Math.max(0, ...vals.filter((v) => v != null), ...teams.filter((v) => v != null)) * 1.15 || 1;
     const cols = ps.map((p, i) => `
-      <button class="mc-col" data-id="${p.id}" aria-label="J${esc(p.jornada || "")}: ${fmt(vals[i], 2)}">
-        <span class="mc-val">${i === bestIdx || i === ps.length - 1 ? fmt(vals[i], digits) : ""}</span>
+      <button class="mc-col" data-id="${p.id}" aria-label="J${esc(p.jornada || "")}: ${fmt(vals[i])}">
+        <span class="mc-val">${fmt(vals[i])}</span>
         <span class="mc-track">
           <span class="mc-bar" style="height:${vals[i] == null ? 0 : Math.max(2, (vals[i] / max) * 100)}%"></span>
           ${teams[i] != null ? `<i class="mc-team" style="bottom:${(teams[i] / max) * 100}%"></i>` : ""}
         </span>
         <span class="mc-lbl">J${esc(p.jornada || i + 1)}</span>
       </button>`).join("");
-    return `<div class="mc">${cols}</div>
-      <div class="legend"><span><i style="background:var(--navy)"></i>${T("you")}</span><span><i class="dash"></i>${T("team_avg")}</span>
-      ${m.unidad ? `<span>${esc(m.unidad)}</span>` : ""}</div>`;
+    return `<div class="mc">${cols}</div>`;
   }
 
   function bindChart() {
-    app.querySelectorAll(".metric-chips button").forEach((b) => (b.onclick = () => {
+    app.querySelectorAll(".seg.small button").forEach((b) => (b.onclick = () => {
       chartKey = b.dataset.k;
-      app.querySelectorAll(".metric-chips button").forEach((x) => x.classList.toggle("on", x === b));
+      app.querySelectorAll(".seg.small button").forEach((x) => x.classList.toggle("on", x === b));
       document.getElementById("match-chart").innerHTML = matchChart(chartKey);
       bindChart();
     }));
@@ -797,36 +795,33 @@
   function matchesScreen() {
     current = matchesScreen;
     if (!hasStats()) return home();
-    const cards = [...statsData.partidos].reverse().map((p) => matchCard(p));
-    el(`<h1>${T("matches_title")}</h1><p class="sub">${T("season")}</p>${cards.join("")}`, "matches");
-    app.querySelectorAll(".match-card").forEach((b) => (b.onclick = () => matchDetail(b.dataset.id)));
+    const rows = [...statsData.partidos].reverse().map(matchRow).join("");
+    el(`<h1>${T("matches_title")}</h1><p class="sub">${T("season")}</p><div class="card list">${rows}</div>`, "matches");
+    app.querySelectorAll(".mrow").forEach((b) => (b.onclick = () => matchDetail(b.dataset.id)));
   }
 
   function matchDetail(id) {
     const p = ((statsData && statsData.partidos) || []).find((x) => String(x.id) === String(id));
     if (!p) return matchesScreen();
     current = () => matchDetail(id);
-    const meta = metricMap(), o = outcome(p);
-    const tiles = HIGHLIGHTS.filter((k) => meta[k] && p.stats && p.stats[k] != null).slice(0, 3).map((k) =>
-      `<div class="tile"><div class="v">${fmt(p.stats[k], meta[k].unidad === "km" ? 1 : 0)}${meta[k].unidad === "%" ? "%" : ""}</div>
-        <div class="u">${esc(meta[k].unidad && meta[k].unidad !== "%" ? meta[k].unidad : "")}</div><div class="l">${esc(mLabel(meta[k]))}</div></div>`);
+    const o = outcome(p);
     el(`
       <button class="back" id="back">‹ ${T("my_matches")}</button>
       <div class="match-hero">
-        <div class="mh-top">J${esc(p.jornada || "")} · ${matchDate(p)} · ${venue(p)}</div>
+        <div class="mh-top">J${esc(p.jornada || "")} · ${matchDate(p)}</div>
         <div class="mh-rival">${matchTitle(p)}</div>
-        ${o ? `<div class="mh-score">${p.gf}<span>–</span>${p.gc}</div><div class="mh-res ${o}">${T("result")[o]}</div>` : ""}
+        ${o ? `<div class="mh-score">${p.gf}<span>–</span>${p.gc}</div>` : ""}
       </div>
-      <div class="tiles">${tiles.join("")}</div>
-      ${categoryCards((m) => {
+      ${categoryPanel((m) => {
         const v = p.stats && p.stats[m.key];
         if (v == null) return "";
         const best = p.equipo_max && v > 0 && v >= p.equipo_max[m.key];
-        return compareRow(m, v, p.equipo ? p.equipo[m.key] : null, "", best);
-      })}
-      <p class="note">${T("stats_note")}</p>
+        return statRow(m, v, p.equipo ? p.equipo[m.key] : null, best);
+      }, "match-panel")}
+      <p class="note">★ ${T("best_team")} · ${T("stats_note_short")}</p>
     `, "matches");
     document.getElementById("back").onclick = matchesScreen;
+    bindPanel("match-panel");
   }
 
   // ---------- Notificaciones ----------
