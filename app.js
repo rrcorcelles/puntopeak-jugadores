@@ -67,6 +67,15 @@
       scan: "Escanear mi QR", paste: "O pega aquí tu enlace", paste_ph: "https://…", enter: "Entrar",
       scan_hint: "Apunta la cámara a tu código QR.", cancel: "Cancelar", camera_error: "No se ha podido abrir la cámara. Pega tu enlace.",
       bad_code: "Ese enlace no es válido. Revísalo o pide uno nuevo.", other_code: "Usar otro código",
+      nav_today: "Hoy", nav_stats: "Estadísticas", nav_matches: "Partidos",
+      stats_title: "Mis estadísticas", season: "Temporada", n_matches: "{n} partidos", n_match: "1 partido",
+      per_match: "Por partido", total: "Total", best: "Mejor marca", team_avg: "Media del equipo", you: "Tú",
+      match_by_match: "Partido a partido", matches_title: "Mis partidos", my_matches: "Mis partidos",
+      vs: "vs", at: "en", home_game: "Local", away_game: "Visitante", match: "Partido",
+      best_team: "Mejor del equipo", last_match: "Último partido",
+      stats_note: "Datos de la cámara Veo. La media del equipo es la de todos los que jugaron ese partido.",
+      result: { W: "Victoria", D: "Empate", L: "Derrota" },
+      cats: { fisico: "Físico", ataque: "Ataque", pases: "Pases", defensa: "Defensa", otras: "Otras" },
       zones: {
         abdomen: "Abdomen", aductor_izq: "Aductor izq.", aductor_der: "Aductor der.",
         cuadriceps_izq: "Cuádriceps izq.", cuadriceps_der: "Cuádriceps der.", rodilla_izq: "Rodilla izq.", rodilla_der: "Rodilla der.",
@@ -115,6 +124,15 @@
       scan: "Scan my QR", paste: "Or paste your link here", paste_ph: "https://…", enter: "Sign in",
       scan_hint: "Point the camera at your QR code.", cancel: "Cancel", camera_error: "Could not open the camera. Paste your link instead.",
       bad_code: "That link is not valid. Check it or ask for a new one.", other_code: "Use another code",
+      nav_today: "Today", nav_stats: "Stats", nav_matches: "Matches",
+      stats_title: "My stats", season: "Season", n_matches: "{n} matches", n_match: "1 match",
+      per_match: "Per match", total: "Total", best: "Best", team_avg: "Team average", you: "You",
+      match_by_match: "Match by match", matches_title: "My matches", my_matches: "My matches",
+      vs: "vs", at: "at", home_game: "Home", away_game: "Away", match: "Match",
+      best_team: "Team best", last_match: "Last match",
+      stats_note: "Data from the Veo camera. Team average = everyone who played that match.",
+      result: { W: "Win", D: "Draw", L: "Loss" },
+      cats: { fisico: "Physical", ataque: "Attack", pases: "Passing", defensa: "Defending", otras: "Other" },
       zones: {
         abdomen: "Abdomen", aductor_izq: "L adductor", aductor_der: "R adductor",
         cuadriceps_izq: "L quadriceps", cuadriceps_der: "R quadriceps", rodilla_izq: "L knee", rodilla_der: "R knee",
@@ -146,9 +164,44 @@
       const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
       return { bienestar, carga: { fecha: localKey(yesterday), km: 24.6, partidos: 2.4, vmax: 31.8 } };
     }
+    if (fn === "pp_stats") return demoStats();
     if (fn === "pp_submit_wellness") demoState.w = true;
     if (fn === "pp_submit_rpe") demoState.r = true;
     return { ok: true };
+  }
+
+  // Cinco partidos inventados para el modo demostración
+  function demoStats() {
+    const M = (key, es, en, unidad, categoria, agg) => ({ key, es, en, unidad, categoria, agg });
+    const metricas = [
+      M("distancia", "Distancia", "Distance", "km", "fisico", "sum"), M("vel_max", "Velocidad máxima", "Top speed", "km/h", "fisico", "max"),
+      M("sprints", "Sprints", "Sprints", "", "fisico", "sum"), M("carreras_ai", "Carreras alta intensidad", "High-intensity runs", "", "fisico", "sum"),
+      M("goles", "Goles", "Goals", "", "ataque", "sum"), M("participaciones_gol", "Participaciones en gol", "Goal involvements", "", "ataque", "sum"),
+      M("ocasiones", "Ocasiones", "Chances", "", "ataque", "sum"), M("tiros", "Tiros", "Shots", "", "ataque", "sum"),
+      M("regates", "Regates", "Dribbles", "", "ataque", "sum"), M("pases", "Pases", "Passes", "", "pases", "sum"),
+      M("pases_ok", "Pases completados", "Completed passes", "", "pases", "sum"),
+      M("precision_pase", "Acierto en el pase", "Pass accuracy", "%", "pases", "rate"),
+      M("entradas", "Entradas", "Tackles", "", "defensa", "sum"), M("intercepciones", "Intercepciones", "Interceptions", "", "defensa", "sum"),
+      M("recuperaciones", "Recuperaciones", "Recoveries", "", "defensa", "sum"),
+    ];
+    const rows = [
+      ["CD Costa", "local", 3, 1, [10.8, 33.1, 12, 30, 1, 2, 3, 3, 4, 41, 33, 80, 2, 3, 2]],
+      ["UD Sierra", "visitante", 1, 1, [9.6, 31.4, 9, 22, 0, 1, 1, 2, 2, 36, 27, 75, 3, 2, 1]],
+      ["Atlético Puerto", "local", 2, 0, [10.2, 34.0, 14, 34, 1, 1, 2, 2, 5, 44, 37, 84, 1, 4, 3]],
+      ["CF Olivar", "visitante", 0, 2, [8.9, 30.2, 7, 19, 0, 0, 1, 1, 1, 29, 21, 72, 4, 2, 2]],
+      ["Real Bahía", "local", 4, 2, [11.1, 32.6, 13, 31, 2, 3, 4, 5, 3, 47, 40, 85, 2, 3, 1]],
+    ];
+    const team = [8.1, 30.4, 8, 20, 0.3, 0.5, 0.9, 1.1, 2.4, 34, 26, 76, 2.1, 2.3, 1.2];
+    const best = [11.4, 34.0, 16, 38, 3, 3, 4, 5, 7, 64, 48, 92, 6, 6, 3];
+    const keys = metricas.map((m) => m.key);
+    const obj = (vals) => Object.fromEntries(keys.map((k, i) => [k, vals[i]]));
+    const partidos = rows.map(([rival, condicion, gf, gc, vals], i) => {
+      const d = new Date(); d.setDate(d.getDate() - 7 * (rows.length - i) + 2);
+      return { id: i + 1, jornada: String(i + 1), fecha: localKey(d), rival, condicion, gf, gc, stats: obj(vals),
+               equipo: obj(team.map((v) => +(v * (0.92 + 0.04 * i)).toFixed(2))),
+               equipo_max: obj(best.map((v, j) => Math.max(v, vals[j]))) };
+    });
+    return { partidos, metricas, equipo_temporada: obj(team) };
   }
 
   async function rpc(fn, args) {
@@ -171,9 +224,14 @@
 
   // ---------- Utilidades ----------
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const el = (html) => {
-    app.innerHTML = (DEMO ? `<div class="demo-note">${T("demo")}</div>` : "") + html;
+  // tab: pestaña activa de la barra inferior ("home", "stats" o "matches"); sin tab, la pantalla va sin barra
+  const el = (html, tab) => {
+    const nav = tab && hasStats() ? tabBar(tab) : "";
+    app.innerHTML = (DEMO ? `<div class="demo-note">${T("demo")}</div>` : "") + html + nav;
+    document.body.classList.toggle("with-tabs", !!nav);
     window.scrollTo(0, 0);
+    const go = { home: () => home(), stats: statsScreen, matches: matchesScreen };
+    app.querySelectorAll(".tabbar button").forEach((b) => (b.onclick = () => go[b.dataset.tab]()));
   };
   const firstName = (n) => String(n || "").split(" ")[0];
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -256,12 +314,13 @@
     current = home;
     let info, summary;
     try {
-      [info, summary] = await Promise.all([rpc("pp_player", {}), rpc("pp_summary", {})]);
+      [info, summary] = await Promise.all([rpc("pp_player", {}), rpc("pp_summary", {}), loadStats()]);
     } catch (e) {
       return e.status ? invalidLink() : offline();
     }
     // Recordatorios en el idioma que usa el jugador
     if (!DEMO && info.lang && info.lang !== lang) rpc("pp_set_language", { p_lang: lang }).catch(() => {});
+    if (info.hora_bienestar) reminderHour = info.hora_bienestar;   // cada equipo tiene su horario
     const pendingW = !info.bienestar_hoy, pendingR = !info.rpe_hoy;
     const install = installBanner();
     el(`
@@ -277,8 +336,11 @@
         <div><div class="title">${T("task_r")}</div><div class="hint">${T("task_r_hint")}</div></div>
         <span class="badge ${pendingR ? "pending" : "done"}">${pendingR ? T("pending") : T("done")}</span>
       </button>
+      ${lastMatchCard()}
       ${myData(summary)}
-    `);
+    `, "home");
+    const lm = document.getElementById("last-match");
+    if (lm) lm.onclick = () => matchDetail(lm.dataset.id);
     document.getElementById("go-w").onclick = () => pendingW && wellness();
     document.getElementById("go-r").onclick = () => pendingR && rpeScreen();
     const nb = document.getElementById("enable-push");
@@ -557,7 +619,215 @@
     bindInstall();
   }
 
+
+  // ---------- Estadísticas de partido (Veo) ----------
+  let statsData = null;
+  async function loadStats() {
+    try { statsData = await rpc("pp_stats", {}); } catch (e) { /* sin estadísticas (p. ej. primer equipo) */ }
+    return statsData;
+  }
+  const hasStats = () => !!(statsData && statsData.partidos && statsData.partidos.length);
+  const RATES = { conversion: ["goles", "ocasiones"], precision_pase: ["pases_ok", "pases"] };
+  const CAT_ORDER = ["fisico", "ataque", "pases", "defensa", "otras"];
+  const HIGHLIGHTS = ["goles", "participaciones_gol", "distancia", "precision_pase", "vel_max", "pases"];
+  const metricMap = () => Object.fromEntries((statsData.metricas || []).map((m) => [m.key, m]));
+  const mLabel = (m) => (m && (m[lang] || m.es)) || "";
+  const fmt = (v, digits) => (v == null || isNaN(v) ? "–" : (+v).toLocaleString(LOCALE(), { maximumFractionDigits: digits ?? 1 }));
+  const outcome = (p) => (p.gf == null || p.gc == null ? null : p.gf > p.gc ? "W" : p.gf === p.gc ? "D" : "L");
+  const unitHtml = (m) => (m.unidad === "%" ? "%" : m.unidad ? ` <small>${esc(m.unidad)}</small>` : "");
+  const digitsOf = () => 1;
+
+  function tabBar(active) {
+    const icon = {
+      home: '<path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/>',
+      stats: '<path d="M5 20V11M12 20V4M19 20v-7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>',
+      matches: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.6l3.7 2.7-1.4 4.3H9.7L8.3 10.3z"/>',
+    };
+    const btn = (tab, label) => `<button data-tab="${tab}" class="${tab === active ? "on" : ""}">
+        <svg viewBox="0 0 24 24" aria-hidden="true">${icon[tab]}</svg><span>${T(label)}</span></button>`;
+    return `<nav class="tabbar">${btn("home", "nav_today")}${btn("stats", "nav_stats")}${btn("matches", "nav_matches")}</nav>`;
+  }
+
+  // Temporada: media por partido (sumas), mejor marca (máximo) o porcentaje recalculado con los totales
+  function seasonValue(key, agg, partidos) {
+    const vals = partidos.map((p) => p.stats && p.stats[key]).filter((v) => v != null);
+    if (!vals.length) return null;
+    if (agg === "max") return { value: Math.max(...vals) };
+    if (agg === "rate") {
+      const [num, den] = RATES[key] || [];
+      const n = partidos.reduce((a, p) => a + ((p.stats && p.stats[num]) || 0), 0);
+      const d = partidos.reduce((a, p) => a + ((p.stats && p.stats[den]) || 0), 0);
+      return { value: num && d > 0 ? (100 * n) / d : vals.reduce((a, b) => a + b, 0) / vals.length };
+    }
+    const total = vals.reduce((a, b) => a + b, 0);
+    return { value: total / vals.length, total };
+  }
+  function teamSeason(key, agg) {
+    const t = statsData.equipo_temporada || {};
+    if (agg === "rate" && RATES[key] && t[RATES[key][1]] > 0) return (100 * t[RATES[key][0]]) / t[RATES[key][1]];
+    return t[key];
+  }
+
+  // Fila: estadística, valor del jugador y barra frente a la media del equipo (marca naranja)
+  function compareRow(m, value, team, extra, best) {
+    const scale = Math.max(value || 0, team || 0) * 1.15 || 1;
+    return `<div class="stat-row">
+      <div class="stat-head"><span class="stat-name">${esc(mLabel(m))}${best ? ` <em class="best">★ ${T("best_team")}</em>` : ""}</span>
+        <span class="stat-val">${fmt(value, digitsOf(m))}${unitHtml(m)}</span></div>
+      <div class="cmp"><div class="cmp-fill" style="width:${Math.min(100, ((value || 0) / scale) * 100)}%"></div>
+        ${team != null ? `<div class="cmp-team" style="left:${Math.min(100, (team / scale) * 100)}%"></div>` : ""}</div>
+      <div class="stat-foot"><span>${team != null ? `${T("team_avg")}: ${fmt(team, digitsOf(m))}` : ""}</span><span>${extra || ""}</span></div>
+    </div>`;
+  }
+
+  function categoryCards(rowFor) {
+    const meta = metricMap();
+    return CAT_ORDER.map((cat) => {
+      const rows = (statsData.metricas || []).filter((m) => (CAT_ORDER.includes(m.categoria) ? m.categoria : "otras") === cat)
+        .map((m) => rowFor(meta[m.key])).filter(Boolean);
+      return rows.length ? `<h2>${T("cats")[cat]}</h2><div class="card stats-card">${rows.join("")}</div>` : "";
+    }).join("");
+  }
+
+  function matchTitle(p) {
+    const where = p.condicion === "visitante" ? T("at") : T("vs");
+    return p.rival ? `${where} ${esc(p.rival)}` : `${T("match")} ${esc(p.jornada || "")}`;
+  }
+  const matchDate = (p) => (p.fecha ? parseDay(p.fecha).toLocaleDateString(LOCALE(), { day: "numeric", month: "short" }) : "");
+  const venue = (p) => (p.condicion === "visitante" ? T("away_game") : T("home_game"));
+
+  function resultChip(p) {
+    const o = outcome(p);
+    return o ? `<span class="result ${o}" title="${T("result")[o]}">${p.gf}-${p.gc}</span>` : "";
+  }
+
+  function miniStats(p) {
+    const meta = metricMap();
+    const picks = HIGHLIGHTS.filter((k) => meta[k] && p.stats && p.stats[k] != null && !(k === "goles" && !p.stats[k])).slice(0, 3);
+    return `<div class="mini">${picks.map((k) => `<span><b>${fmt(p.stats[k], digitsOf(meta[k]))}${meta[k].unidad === "%" ? "%" : ""}</b>${esc(mLabel(meta[k]))}</span>`).join("")}</div>`;
+  }
+
+  function matchCard(p, id) {
+    return `<button class="card match-card" ${id ? `id="${id}"` : ""} data-id="${p.id}">
+      <div class="match-top"><span class="jornada">J${esc(p.jornada || "")}</span>
+        <span class="match-name">${matchTitle(p)}<small>${matchDate(p)} · ${venue(p)}</small></span>${resultChip(p)}</div>
+      ${miniStats(p)}
+    </button>`;
+  }
+
+  function lastMatchCard() {
+    if (!hasStats()) return "";
+    const p = statsData.partidos[statsData.partidos.length - 1];
+    return `<h2>${T("last_match")}</h2>${matchCard(p, "last-match")}`;
+  }
+
+  let chartKey = null;
+  function statsScreen() {
+    current = statsScreen;
+    if (!hasStats()) return home();
+    const partidos = statsData.partidos, meta = metricMap(), n = partidos.length;
+    const tiles = HIGHLIGHTS.filter((k) => meta[k]).slice(0, 4).map((k) => {
+      const m = meta[k], s = seasonValue(k, m.agg, partidos);
+      const showTotal = m.agg === "sum" && m.unidad !== "km";
+      const v = s ? (showTotal ? s.total : s.value) : null;
+      const sub = showTotal ? T("total") : m.agg === "max" ? T("best") : m.agg === "rate" ? T("season") : T("per_match");
+      return `<div class="tile"><div class="v">${fmt(v, m.unidad === "km" ? 1 : 0)}${m.unidad === "%" ? "%" : ""}</div>
+        <div class="u">${esc(m.unidad && m.unidad !== "%" ? m.unidad : "")}</div><div class="l">${esc(mLabel(m))}<br>${sub}</div></div>`;
+    });
+    const chartable = (statsData.metricas || []).filter((m) => m.agg !== "rate" && partidos.some((p) => p.stats && p.stats[m.key] != null));
+    if (!chartKey || !meta[chartKey]) chartKey = (chartable.find((m) => m.key === "distancia") || chartable[0] || {}).key;
+    el(`
+      <h1>${T("stats_title")}</h1>
+      <p class="sub">${T("season")} · ${n === 1 ? T("n_match") : T("n_matches").replace("{n}", n)}</p>
+      <div class="tiles four">${tiles.join("")}</div>
+      <h2>${T("match_by_match")}</h2>
+      <div class="card">
+        <div class="metric-chips">${chartable.slice(0, 8).map((m) => `<button data-k="${m.key}" class="${m.key === chartKey ? "on" : ""}">${esc(mLabel(m))}</button>`).join("")}</div>
+        <div id="match-chart">${matchChart(chartKey)}</div>
+      </div>
+      ${categoryCards((m) => {
+        const s = seasonValue(m.key, m.agg, partidos);
+        if (!s) return "";
+        const extra = m.agg === "sum" ? `${T("per_match")} · ${T("total")}: ${fmt(s.total, m.unidad === "km" ? 1 : 0)}` : m.agg === "max" ? T("best") : "";
+        return compareRow(m, s.value, teamSeason(m.key, m.agg), extra);
+      })}
+      <p class="note">${T("stats_note")}</p>
+    `, "stats");
+    bindChart();
+  }
+
+  // Barras por partido (valor del jugador) con una marca naranja en la media del equipo de ese partido
+  function matchChart(key) {
+    const m = metricMap()[key];
+    if (!m) return "";
+    const ps = statsData.partidos;
+    const vals = ps.map((p) => (p.stats && p.stats[key] != null ? p.stats[key] : null));
+    const teams = ps.map((p) => (p.equipo && p.equipo[key] != null ? p.equipo[key] : null));
+    const max = Math.max(0, ...vals.filter((v) => v != null), ...teams.filter((v) => v != null)) * 1.12 || 1;
+    const present = vals.filter((v) => v != null);
+    const bestIdx = present.length ? vals.indexOf(Math.max(...present)) : -1;
+    const digits = m.unidad === "km" ? 1 : 0;
+    const cols = ps.map((p, i) => `
+      <button class="mc-col" data-id="${p.id}" aria-label="J${esc(p.jornada || "")}: ${fmt(vals[i], 2)}">
+        <span class="mc-val">${i === bestIdx || i === ps.length - 1 ? fmt(vals[i], digits) : ""}</span>
+        <span class="mc-track">
+          <span class="mc-bar" style="height:${vals[i] == null ? 0 : Math.max(2, (vals[i] / max) * 100)}%"></span>
+          ${teams[i] != null ? `<i class="mc-team" style="bottom:${(teams[i] / max) * 100}%"></i>` : ""}
+        </span>
+        <span class="mc-lbl">J${esc(p.jornada || i + 1)}</span>
+      </button>`).join("");
+    return `<div class="mc">${cols}</div>
+      <div class="legend"><span><i style="background:var(--navy)"></i>${T("you")}</span><span><i class="dash"></i>${T("team_avg")}</span>
+      ${m.unidad ? `<span>${esc(m.unidad)}</span>` : ""}</div>`;
+  }
+
+  function bindChart() {
+    app.querySelectorAll(".metric-chips button").forEach((b) => (b.onclick = () => {
+      chartKey = b.dataset.k;
+      app.querySelectorAll(".metric-chips button").forEach((x) => x.classList.toggle("on", x === b));
+      document.getElementById("match-chart").innerHTML = matchChart(chartKey);
+      bindChart();
+    }));
+    app.querySelectorAll(".mc-col").forEach((b) => (b.onclick = () => matchDetail(b.dataset.id)));
+  }
+
+  function matchesScreen() {
+    current = matchesScreen;
+    if (!hasStats()) return home();
+    const cards = [...statsData.partidos].reverse().map((p) => matchCard(p));
+    el(`<h1>${T("matches_title")}</h1><p class="sub">${T("season")}</p>${cards.join("")}`, "matches");
+    app.querySelectorAll(".match-card").forEach((b) => (b.onclick = () => matchDetail(b.dataset.id)));
+  }
+
+  function matchDetail(id) {
+    const p = ((statsData && statsData.partidos) || []).find((x) => String(x.id) === String(id));
+    if (!p) return matchesScreen();
+    current = () => matchDetail(id);
+    const meta = metricMap(), o = outcome(p);
+    const tiles = HIGHLIGHTS.filter((k) => meta[k] && p.stats && p.stats[k] != null).slice(0, 3).map((k) =>
+      `<div class="tile"><div class="v">${fmt(p.stats[k], meta[k].unidad === "km" ? 1 : 0)}${meta[k].unidad === "%" ? "%" : ""}</div>
+        <div class="u">${esc(meta[k].unidad && meta[k].unidad !== "%" ? meta[k].unidad : "")}</div><div class="l">${esc(mLabel(meta[k]))}</div></div>`);
+    el(`
+      <button class="back" id="back">‹ ${T("my_matches")}</button>
+      <div class="match-hero">
+        <div class="mh-top">J${esc(p.jornada || "")} · ${matchDate(p)} · ${venue(p)}</div>
+        <div class="mh-rival">${matchTitle(p)}</div>
+        ${o ? `<div class="mh-score">${p.gf}<span>–</span>${p.gc}</div><div class="mh-res ${o}">${T("result")[o]}</div>` : ""}
+      </div>
+      <div class="tiles">${tiles.join("")}</div>
+      ${categoryCards((m) => {
+        const v = p.stats && p.stats[m.key];
+        if (v == null) return "";
+        const best = p.equipo_max && v > 0 && v >= p.equipo_max[m.key];
+        return compareRow(m, v, p.equipo ? p.equipo[m.key] : null, "", best);
+      })}
+      <p class="note">${T("stats_note")}</p>
+    `, "matches");
+    document.getElementById("back").onclick = matchesScreen;
+  }
+
   // ---------- Notificaciones ----------
+  let reminderHour = CFG.horaBienestar || "8:45";
   function notificationsBanner() {
     if (DEMO || !("serviceWorker" in navigator) || !CFG.vapidPublicKey) return "";
     if (isIOS && !standalone) return "";   // en iPhone los avisos solo funcionan con la app instalada
@@ -565,7 +835,7 @@
     if (Notification.permission === "denied") {
       return `<div class="banner"><b>${T("push_blocked")}</b>${T("push_blocked_text")}</div>`;
     }
-    return `<div class="banner"><b>${T("push_title")}</b>${T("push_text").replace("{hour}", esc(CFG.horaBienestar || "8:45"))}
+    return `<div class="banner"><b>${T("push_title")}</b>${T("push_text").replace("{hour}", esc(reminderHour))}
       <button class="btn" id="enable-push">${T("push_btn")}</button></div>`;
   }
 
@@ -595,5 +865,8 @@
   const route = location.hash.replace("#", "");
   if (route === "bienestar") wellness();
   else if (route === "rpe") rpeScreen();
+  else if (route === "estadisticas") loadStats().then(() => (hasStats() ? statsScreen() : home()));
+  else if (route === "partidos") loadStats().then(() => (hasStats() ? matchesScreen() : home()));
+  else if (route.startsWith("partido-")) loadStats().then(() => (hasStats() ? matchDetail(route.slice(8)) : home()));
   else home();
 })();
