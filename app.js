@@ -10,7 +10,9 @@
   const CFG = window.PP_CONFIG || {};
   const app = document.getElementById("app");
   const params = new URLSearchParams(location.search);
-  const DEMO = params.get("demo") === "1";
+  // ?demo=1: jugador del primer equipo (GPS) · ?demo=filial: jugador del filial (sin GPS, 3 partidos de Veo)
+  const DEMO = ["1", "filial"].includes(params.get("demo"));
+  const DEMO_FILIAL = params.get("demo") === "filial";
 
   // ---------- Almacenamiento local (puede no estar disponible) ----------
   const store = {
@@ -162,7 +164,7 @@
         .filter((d) => d.media != null);
       if (demoState.w) bienestar.push({ fecha: localKey(new Date()), media: 4.4 });
       const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-      return { bienestar, carga: { fecha: localKey(yesterday), km: 24.6, partidos: 2.4, vmax: 31.8 } };
+      return { bienestar, carga: DEMO_FILIAL ? null : { fecha: localKey(yesterday), km: 24.6, partidos: 2.4, vmax: 31.8 } };
     }
     if (fn === "pp_stats") return demoStats();
     if (fn === "pp_submit_wellness") demoState.w = true;
@@ -191,6 +193,7 @@
       ["CF Olivar", "visitante", 0, 2, [8.9, 30.2, 7, 19, 0, 0, 1, 1, 1, 29, 21, 72, 4, 2, 2]],
       ["Real Bahía", "local", 4, 2, [11.1, 32.6, 13, 31, 2, 3, 4, 5, 3, 47, 40, 85, 2, 3, 1]],
     ];
+    if (DEMO_FILIAL) rows.splice(1, 2);                 // filial: 3 partidos
     const team = [8.1, 30.4, 8, 20, 0.3, 0.5, 0.9, 1.1, 2.4, 34, 26, 76, 2.1, 2.3, 1.2];
     const best = [11.4, 34.0, 16, 38, 3, 3, 4, 5, 7, 64, 48, 92, 6, 6, 3];
     const keys = metricas.map((m) => m.key);
